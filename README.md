@@ -1,8 +1,11 @@
 # RugWatch
 
-autonomous rug pull detection and exit agent on OKX OnchainOS.
+Autonomous rug pull detection and exit agent built on **OKX OnchainOS**.
 
-monitors 5 on-chain signals continuously, scores a composite RugScore (0–1), and exits a position autonomously when the threshold is crossed. no human approval. no delay.
+Monitors on-chain tokens for rug pull signals, computes a composite RugScore (0-1), and exits positions autonomously when the threshold is crossed. No human approval. No delay.
+
+**Live:** https://rugwatch.sandpark.co
+**Demo:** https://rugwatch.sandpark.co/demo (no wallet needed)
 
 ---
 
@@ -24,7 +27,7 @@ token added → monitoring loop starts (every 60s)
          ≥ 0.80 → onchainos swap execute → USDC
 ```
 
-all signal data comes from OKX OnchainOS. the exit routes across 500+ liquidity sources via the OKX DEX aggregator.
+All signal data comes from OKX OnchainOS. The exit routes across 500+ liquidity sources via the OKX DEX aggregator.
 
 ---
 
@@ -32,20 +35,44 @@ all signal data comes from OKX OnchainOS. the exit routes across 500+ liquidity 
 
 | layer | tech |
 |---|---|
-| backend | Python / FastAPI / asyncio |
-| frontend | Next.js 15 / Tailwind CSS |
+| backend | Python / FastAPI / asyncio / SQLite |
+| frontend | Next.js 14 / Tailwind CSS |
 | on-chain data | OKX OnchainOS (`onchainos` CLI) |
-| exit execution | `okx-dex-swap` |
+| exit execution | `onchainos swap execute` |
 | agent wallet | OKX Agentic Wallet |
-| chain | X Layer (zero gas) |
+| chains | Base, X Layer, Solana |
+| hosting | DigitalOcean VPS + nginx + PM2 |
 
 ---
 
-## setup
+## architecture
+
+```
+                        nginx (SSL termination)
+                        ┌──────────────────────────┐
+  https://rugwatch.     │  :443                     │
+  sandpark.co      ────►│  /api/* → localhost:8000  │
+                        │  /*     → localhost:3000  │
+                        └──────────────────────────┘
+                              │              │
+                    ┌─────────┘              └─────────┐
+                    ▼                                  ▼
+           FastAPI backend                    Next.js frontend
+           ┌──────────────────┐              ┌──────────────────┐
+           │  uvicorn :8000   │              │  next start :3000│
+           │  SQLite persist  │              │  SSR + static    │
+           │  onchainos CLI   │              │  /demo (static)  │
+           │  monitoring loop │              └──────────────────┘
+           └──────────────────┘
+```
+
+---
+
+## setup (local development)
 
 ### prerequisites
 
-- `onchainos` CLI installed (from the xagt plugin setup)
+- `onchainos` CLI installed (`npx @xagt/agent-plugin@latest setup`)
 - Python 3.12+
 - Node.js 18+
 
@@ -56,7 +83,6 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# add your OKX API keys to .env
 uvicorn main:app --reload --port 8000
 ```
 
@@ -65,91 +91,100 @@ uvicorn main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
-cp .env.local.example .env.local
 npm run dev
 ```
 
-open http://localhost:3000
+Open http://localhost:3000
 
 ### demo page (no backend needed)
 
-open http://localhost:3000/demo
+Open http://localhost:3000/demo
 
 ---
 
-## deploy
+## deploy (VPS)
 
-### frontend → Vercel
-
-1. push repo to GitHub
-2. import in Vercel dashboard, set root directory to `frontend`
-3. add env var: `BACKEND_URL=https://your-backend.fly.dev`
-4. deploy
-
-### backend → Fly.io
+RugWatch runs on a single VPS with nginx as reverse proxy.
 
 ```bash
-cd backend
-fly launch                          # creates app
-fly volumes create rugwatch_data --size 1  # persistent storage for SQLite
-fly secrets set FRONTEND_URL=https://rugwatch.vercel.app
-fly secrets set OKX_API_KEY=... OKX_SECRET_KEY=... OKX_API_PASSPHRASE=... OKX_PROJECT_ID=...
-fly deploy
+# on the server
+apt install nginx python3-venv nodejs npm
+npm install -g pm2
+certbot --nginx -d your-domain.com
+
+# sync code
+rsync -az backend/ frontend/ server:/opt/rugwatch/
+
+# backend
+cd /opt/rugwatch/backend
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+# frontend
+cd /opt/rugwatch/frontend
+npm install && npx next build
+
+# start both
+pm2 start ecosystem.config.js
+pm2 save && pm2 startup
 ```
 
 ---
 
-## OKX Agentic Wallet (in-app)
+## OKX Agentic Wallet
 
-rugwatch connects to your **OKX Agentic Wallet** through the `onchainos` CLI on the machine running the backend.
+RugWatch connects to your **OKX Agentic Wallet** through the `onchainos` CLI.
 
-1. open the dashboard — wallet bar under the header
-2. enter your email → **send code** → paste OTP from inbox → **verify**
-3. connected state shows your EVM address and total balance
-4. **add token** — auto-exit uses the connected wallet (no manual paste)
-5. optional: **buy {symbol} with USDC** on a watched token to open a position via `onchainos swap execute`
-6. when RugScore ≥ exit threshold, the agent calls `onchainos swap execute` to sell back to USDC
-
-requirements:
-- `onchainos` installed (`npx @xagt/agent-plugin@latest setup`)
-- backend running on the same machine as your CLI session
+1. Open the dashboard — click the wallet button in the nav bar
+2. Enter your email → **send code** → paste OTP → **verify**
+3. Connected state shows your EVM address and balance
+4. **Add token** — auto-exit uses the connected wallet
+5. Optional: **buy {symbol} with USDC** to open a position via `onchainos swap execute`
+6. When RugScore >= exit threshold, the agent sells back to USDC autonomously
 
 ---
 
 ## demo (simulated rug)
 
-the frontend has a demo panel on each monitored token. no real rug needed:
+The dashboard has demo controls on each monitored token:
 
-1. add any token address via the watchlist
-2. use the **0.45 / 0.70 / 0.90** buttons to step the RugScore up
-3. or hit **simulate rug** to inject all signals at 1.0 immediately
-4. watch the gauge, signal bars, event log, and chart update in real time
-5. if a wallet is configured, the agent fires `onchainos swap execute` autonomously at ≥ 0.80
+1. Add any token address via the watchlist
+2. Use the **0.45 / 0.70 / 0.90** buttons to step the RugScore up
+3. Or hit **simulate rug** to inject all signals at 1.0
+4. Watch the gauge, signal bars, event log, and chart update in real time
+5. If a wallet is connected, the agent fires `onchainos swap execute` at >= 0.80
+
+Or visit [/demo](https://rugwatch.sandpark.co/demo) for a self-contained walkthrough with no backend required.
 
 ---
 
-## api reference
+## api
 
-| endpoint | method | description |
-|---|---|---|
-| `/api/status` | GET | all token states + global events |
-| `/api/watch` | POST | add a token to monitoring |
-| `/api/watch/:address` | DELETE | remove a token |
-| `/api/simulate-rug` | POST | inject artificial signals for demo |
-| `/api/events` | GET | SSE stream of real-time events |
-| `/api/health` | GET | health check |
+| endpoint | method | auth | description |
+|---|---|---|---|
+| `/api/status` | GET | - | all token states + global events |
+| `/api/health` | GET | - | health check |
+| `/api/events` | GET | - | SSE stream of real-time events |
+| `/api/watch` | POST | wallet | add a token to monitoring |
+| `/api/watch/:address` | DELETE | wallet | remove a token |
+| `/api/simulate-rug` | POST | wallet | inject artificial signals |
+| `/api/wallet/login` | POST | - | send OTP to email |
+| `/api/wallet/verify` | POST | - | verify OTP, get session |
+| `/api/wallet/status` | GET | - | wallet connection state |
+| `/api/wallet/balance` | GET | wallet | portfolio balance |
+| `/api/wallet/buy` | POST | wallet | buy token with USDC |
+| `/api/kill-switch` | POST | wallet | toggle emergency kill switch |
 
 ---
 
 ## signal sources
 
-| signal | OKX skill | CLI command |
+| signal | weight | CLI command |
 |---|---|---|
-| dev wallet | `okx-dex-signal` | `onchainos tracker activities --tracker-type multi_address` |
-| smart money | `okx-dex-signal` | `onchainos tracker activities --tracker-type smart_money` |
-| holder concentration | `okx-dex-token` | `onchainos token cluster-overview` |
-| liquidity withdrawal | `okx-dex-market` | `onchainos token liquidity` |
-| trade flow toxicity | `okx-dex-market` | `onchainos token trades` |
+| dev wallet movement | 0.30 | `onchainos tracker activities --tracker-type multi_address` |
+| smart money exit | 0.25 | `onchainos tracker activities --tracker-type smart_money` |
+| holder concentration | 0.20 | `onchainos token cluster-overview` |
+| liquidity withdrawal | 0.15 | `onchainos token liquidity` |
+| trade flow toxicity | 0.10 | `onchainos token trades` |
 
 ---
 
@@ -158,25 +193,44 @@ the frontend has a demo panel on each monitored token. no real rug needed:
 ```
 rugwatch/
 ├── backend/
-│   ├── main.py          # FastAPI app + all routes
-│   ├── monitor.py       # async monitoring loop per token
-│   ├── signals.py       # 5 signal calculators (onchainos CLI calls)
-│   ├── scorer.py        # weighted RugScore aggregation
-│   ├── exit.py          # autonomous swap exit via onchainos
-│   ├── state.py         # in-memory token state store
+│   ├── main.py            # FastAPI app + all routes
+│   ├── monitor.py         # async monitoring loop per token
+│   ├── signals.py         # 5 signal calculators (onchainos CLI)
+│   ├── scorer.py          # weighted RugScore aggregation
+│   ├── exit.py            # autonomous swap exit via onchainos
+│   ├── state.py           # token state dataclasses
+│   ├── app_state.py       # singleton state with async locks
+│   ├── db.py              # SQLite persistence (aiosqlite)
+│   ├── auth.py            # session auth middleware
+│   ├── wallet.py          # OKX wallet integration
+│   ├── config.py          # pydantic settings
 │   └── requirements.txt
-└── frontend/
-    ├── app/
-    │   ├── page.tsx     # main dashboard
-    │   └── layout.tsx
-    ├── components/
-    │   ├── RiskGauge.tsx      # SVG score gauge
-    │   ├── SignalPanel.tsx    # 5 signal bars
-    │   ├── ScoreChart.tsx     # score history sparkline
-    │   ├── WatchList.tsx      # token list sidebar
-    │   ├── EventLog.tsx       # real-time event feed
-    │   └── AddTokenForm.tsx   # add token form
-    └── lib/
-        ├── types.ts     # TypeScript types
-        └── api.ts       # API helpers
+├── frontend/
+│   ├── app/
+│   │   ├── page.tsx       # main dashboard route
+│   │   ├── dashboard.tsx  # dashboard client component
+│   │   ├── demo/          # self-contained demo page
+│   │   ├── layout.tsx     # root layout + fonts
+│   │   └── globals.css    # design system
+│   ├── components/
+│   │   ├── RiskGauge.tsx      # SVG score gauge
+│   │   ├── SignalPanel.tsx    # 5 signal bars
+│   │   ├── ScoreChart.tsx     # score history sparkline
+│   │   ├── WatchList.tsx      # token list sidebar
+│   │   ├── WalletPanel.tsx    # wallet connection card
+│   │   ├── EventLog.tsx       # real-time event feed
+│   │   ├── BuyPosition.tsx    # buy token form
+│   │   ├── AddTokenForm.tsx   # add token to watchlist
+│   │   └── ErrorBoundary.tsx  # error boundary wrapper
+│   └── lib/
+│       ├── types.ts       # TypeScript types
+│       ├── api.ts         # API client + session management
+│       └── demo-data.ts   # demo page mock data
+└── ecosystem.config.js    # PM2 process config
 ```
+
+---
+
+## license
+
+MIT
