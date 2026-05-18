@@ -7,6 +7,8 @@ Monitors on-chain tokens for rug pull signals, computes a composite RugScore (0-
 **Live:** https://rugwatch.sandpark.co
 **Demo:** https://rugwatch.sandpark.co/demo (no wallet needed)
 
+![RugWatch Dashboard](docs/screenshot.jpeg)
+
 ---
 
 ## how it works
