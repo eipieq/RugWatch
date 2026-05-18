@@ -40,7 +40,7 @@ export default function EventLog({ events }: Props) {
           <div key={i} className="card py-2.5 px-3">
             <div className="flex justify-between items-start gap-2 mb-1">
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${s.className}`}>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-[3px] ${s.className}`}>
                   {s.label}
                 </span>
                 <span className="text-xs text-neutral-500">{ev.symbol || ev.token.slice(0, 6)}</span>

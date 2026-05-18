@@ -26,7 +26,7 @@ export default function ScoreChart({
     );
   }
 
-  const pad = { t: 8, r: 8, b: 20, l: 36 };
+  const pad = { t: 10, r: 8, b: 22, l: 40 };
   const w = width - pad.l - pad.r;
   const h = height - pad.t - pad.b;
 
@@ -63,7 +63,7 @@ export default function ScoreChart({
             return (
               <g key={v}>
                 <line x1={0} y1={y} x2={w} y2={y} stroke="#f5f5f5" strokeWidth={1} />
-                <text x={-4} y={y + 3} fill="#d4d4d4" fontSize={8} textAnchor="end">
+                <text x={-6} y={y + 3} fill="#d4d4d4" fontSize={9} textAnchor="end" fontFamily="inherit">
                   {v.toFixed(2)}
                 </text>
               </g>

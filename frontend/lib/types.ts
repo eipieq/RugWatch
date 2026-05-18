@@ -57,6 +57,7 @@ export interface WalletStatus {
   login_type: string;
   is_new: boolean;
   error?: string;
+  session_token?: string;
 }
 
 export interface WalletBalance {

@@ -56,7 +56,6 @@ export default function RiskGauge({ score, warnAt = 0.65, exitAt = 0.80, size = 
   const label = LABEL[level];
   const color = scoreToColor(score);
 
-  const gradId = "gauge-grad";
   const trackD = arcPath(START_DEG, START_DEG + SWEEP);
   const fillEnd = START_DEG + Math.max(score, 0.005) * SWEEP;
   const fillD = arcPath(START_DEG, fillEnd);
@@ -64,12 +63,6 @@ export default function RiskGauge({ score, warnAt = 0.65, exitAt = 0.80, size = 
 
   const badgeClass =
     level === "danger" ? "status-danger" : level === "warn" ? "status-warn" : "status-safe";
-
-  // gradient stops along the arc
-  const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
-    offset: `${t * 100}%`,
-    color: scoreToColor(t),
-  }));
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -81,14 +74,6 @@ export default function RiskGauge({ score, warnAt = 0.65, exitAt = 0.80, size = 
         role="img"
         aria-label={`RugScore ${score.toFixed(2)}, status: ${label}`}
       >
-        <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
-            {stops.map((s) => (
-              <stop key={s.offset} offset={s.offset} stopColor={s.color} />
-            ))}
-          </linearGradient>
-        </defs>
-
         {/* track */}
         <path
           d={trackD}
@@ -99,12 +84,12 @@ export default function RiskGauge({ score, warnAt = 0.65, exitAt = 0.80, size = 
           opacity={0.35}
         />
 
-        {/* filled arc with gradient */}
+        {/* filled arc */}
         {score > 0.001 && (
           <path
             d={fillD}
             fill="none"
-            stroke={`url(#${gradId})`}
+            stroke={color}
             strokeWidth={STROKE_W}
             strokeLinecap="round"
           />

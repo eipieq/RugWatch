@@ -39,8 +39,8 @@ export default function BuyPosition({ tokenAddress, chain, symbol, walletConnect
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn-ghost">
-        <ArrowCircleDown size={20} weight="regular" className="text-emerald-500" />
+      <button type="button" onClick={() => setOpen(true)} aria-label={`Buy ${symbol} with USDC`} className="btn-ghost w-fit px-4 py-2 h-auto">
+        <ArrowCircleDown size={18} weight="regular" className="text-emerald-500" />
         buy {symbol} with USDC
       </button>
     );

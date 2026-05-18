@@ -51,7 +51,8 @@ export default function AddTokenForm({ onAdded, walletConnected, walletAddress }
         type="button"
         onClick={() => walletConnected && setOpen(true)}
         disabled={!walletConnected}
-        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-neutral-500 hover:bg-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        aria-label="Add new token"
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-[3px] text-sm font-medium text-neutral-500 hover:bg-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         <Plus size={20} weight="regular" className="text-neutral-400" />
         add token
@@ -64,7 +65,7 @@ export default function AddTokenForm({ onAdded, walletConnected, walletAddress }
       <p className="label-col">Add token</p>
 
       {!walletConnected && (
-        <p className="text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
+        <p className="text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-[3px]">
           Connect wallet in the bar above first
         </p>
       )}

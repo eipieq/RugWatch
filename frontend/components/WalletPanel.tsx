@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Wallet, SignOut } from "@phosphor-icons/react";
+import Image from "next/image";
+import { Wallet } from "@phosphor-icons/react";
 import {
   fetchWalletBalance,
   fetchWalletStatus,
@@ -110,28 +111,21 @@ export default function WalletPanel({ wallet: walletProp, onChange }: Props) {
   if (wallet?.logged_in) {
     const addr = wallet.evm_address;
     return (
-      <div className="card flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-[3px] bg-indigo-50 flex items-center justify-center">
-            <Wallet size={18} weight="regular" className="text-indigo-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-800">OKX Agentic Wallet</p>
-            <p className="text-xs text-neutral-500">
-              {addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "connected"}
-              {wallet.email ? ` · ${wallet.email}` : ""}
-            </p>
-            {balanceUsd && (
-              <p className="text-xs text-neutral-400 mt-0.5">
-                ${parseFloat(balanceUsd).toLocaleString(undefined, { maximumFractionDigits: 2 })} total
-              </p>
-            )}
-          </div>
-        </div>
-        <button type="button" onClick={handleLogout} disabled={loading} className="btn-ghost">
-          <SignOut size={20} weight="regular" />
-          disconnect
-        </button>
+      <div className="card flex flex-col gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/okx-logo.png" alt="OKX" className="h-7 w-auto object-contain self-start" />
+        <span className="text-base font-medium text-neutral-800">Agentic Wallet</span>
+        {addr && (
+          <p className="text-xs font-mono text-neutral-500 truncate">{addr}</p>
+        )}
+        {wallet.email && (
+          <p className="text-xs text-neutral-400">{wallet.email}</p>
+        )}
+        {balanceUsd && (
+          <p className="text-xl font-semibold text-neutral-900 tracking-tight">
+            ${parseFloat(balanceUsd).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </p>
+        )}
       </div>
     );
   }
